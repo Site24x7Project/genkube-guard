@@ -1,45 +1,72 @@
 import strawberry
 from typing import List
-from src.llm_handler import explain, generate_patch, suggest, suggest_with_persona
-from src import linter_runner
+from strawberry.types import Info
+import logging
+
+from src.llm_handler import memory
+
+logger = logging.getLogger("genkube")
 
 @strawberry.type
-class AnalysisResult:
-    issues: List[str]
-    explanations: List[str]
+class MemoryItem:
+    prompt: str
+    response: str
 
 @strawberry.type
-class PatchResult:
-    patched_yaml: str
-
-@strawberry.type
-class SuggestionResult:
-    suggestions: str
+class AddMemoryResponse:
+    status: str
+    message: str
 
 @strawberry.type
 class Query:
-    @strawberry.field
-    def analyze(self, yaml_str: str) -> AnalysisResult:
-        issues = linter_runner.run_kube_linter(yaml_str.encode("utf-8"))
-        explanations = [explain(issue) for issue in issues]
-        return AnalysisResult(issues=issues, explanations=explanations)
+    @strawberry.field(description="Search memory for relevant LLM prompts/responses.")
+    def search_memory(self, q: str, k: int = 5) -> List[MemoryItem]:
+        try:
+            logger.info("GraphQL memory search called for query: %s", q)
+            results = memory.search(q, k)
+            parsed = []
 
-    @strawberry.field
-    def health(self) -> str:
-        return "GraphQL API is up and running"
+            for i, text in enumerate(results[:k]):
+                logger.debug("RAW TEXT FROM SEARCH: %s", text)
+
+                if "\nResponse: " in text and "Prompt: " in text:
+                    parts = text.split("\nResponse: ", 1)
+                    prompt = parts[0].replace("Prompt: ", "").strip()
+                    response = parts[1].strip()
+                    logger.debug("✅ Parsed OK: %s | %s", prompt, response)
+                else:
+                    prompt = text[:60] + "..." if len(text) > 60 else text
+                    response = text
+                    logger.warning("⚠️ Fallback parser used for: %s", text)
+
+                parsed.append(MemoryItem(prompt=prompt, response=response))
+
+            return parsed
+
+        except Exception as e:
+            logger.exception("GraphQL memory search failed")
+            return []
 
 @strawberry.type
 class Mutation:
-    @strawberry.mutation
-    def patch(self, yaml_str: str) -> PatchResult:
-        return PatchResult(patched_yaml=generate_patch(yaml_str))
-    
-    @strawberry.mutation
-    def suggest(self, yaml_str: str) -> SuggestionResult:
-        return SuggestionResult(suggestions=suggest(yaml_str))
-    
-    @strawberry.mutation
-    def suggest_with_persona(self, yaml_str: str, persona: str) -> SuggestionResult:
-        return SuggestionResult(suggestions=suggest_with_persona(yaml_str, persona))
+    @strawberry.mutation(description="Clear the FAISS-backed memory store.")
+    def clear_memory(self) -> str:
+        try:
+            memory.store.clear()
+            memory.index.reset()
+            memory.save("memory-data/memory.pkl")
+            logger.info("GraphQL mutation: memory cleared")
+            return "Memory cleared."
+        except Exception as e:
+            logger.exception("GraphQL clear_memory failed")
+            return "Failed to clear memory."
 
-schema = strawberry.Schema(query=Query, mutation=Mutation)
+    @strawberry.mutation(description="Add a memory text to FAISS store.")
+    def add_memory(self, text: str) -> AddMemoryResponse:
+        try:
+            memory.add(text)
+            logger.info("GraphQL mutation: memory added successfully")
+            return AddMemoryResponse(status="success", message="Text added to memory.")
+        except Exception as e:
+            logger.exception("GraphQL add_memory failed")
+            return AddMemoryResponse(status="error", message="Failed to add text to memory.")

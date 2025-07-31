@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mixed-deploy
+spec:
+  replicas: 1
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  LOG_LEVEL: debug
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mixed-stateful
+spec:
+  replicas: 2

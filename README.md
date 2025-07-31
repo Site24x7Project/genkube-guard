@@ -1,167 +1,129 @@
-# GenKubeGuard
+# GenKube Guard
 
-GenKubeGuard is a Kubernetes YAML security analyzer and DevSecOps assistant that integrates static analysis with a local LLM for secure, intelligent feedback. It provides patch suggestions, contextual recommendations for various developer roles, and a GraphQL API for enhanced interaction.
+> A DevSecOps LLM-powered Assistant for Secure Kubernetes YAMLs
 
----
-
-## Table of Contents
-
-* [Features](#features)
-* [Project Structure](#project-structure)
-* [How to Run the Application](#how-to-run-the-application)
-* [Endpoints](#endpoints)
-* [Testing](#testing)
-* [Technical Stack](#technical-stack)
-* [Why This Project Matters](#why-this-project-matters)
-* [Author](#author)
-* [License](#license)
+GenKube Guard is a FastAPI-based backend that combines Large Language Model reasoning with Qloo’s Taste AI to offer culturally-aware and technically sound recommendations for Kubernetes YAML hardening. It automatically analyzes YAML files, suggests security enhancements, and provides patching logic for insecure workloads.
 
 ---
 
-## Features
+## 🚀 Features
 
-* Static analysis of Kubernetes YAML files using kube-linter.
-* AI-generated explanations for each issue using a local LLM (Mistral via Ollama).
-* Automatic patching of insecure or incomplete YAML configurations.
-* Contextual suggestions tailored to the role of the user (junior, senior, or SRE).
-* Lightweight retrieval-augmented memory using FAISS to log and recall prompt-response pairs.
-* REST API and GraphQL endpoints for flexibility and extensibility.
-* Pytest-based test suite covering core functionality and endpoints.
-* Dockerized for local deployment with Ollama integration.
+- **LLM-Powered YAML Analysis** (`/analyze`) – Uses `kube-linter` to detect issues and explains them via LLM.
+- **Secure Patch Generator** (`/patch`) – Automatically patches Deployments and StatefulSets with missing security fields.
+- **DevSecOps Suggestions** (`/suggest`) – General best practices by resource kind.
+- **Persona-Specific Guidance** (`/suggest-persona`) – Tailored YAML advice for juniors, seniors, and SREs.
+- **Taste-Aware Recommendations** (`/recommend`) – Culturally flavored DevSecOps insights via Qloo mock API.
+- **RAG Memory System** (`/memory`) – Stores and retrieves DevSecOps context across sessions.
+- **GraphQL Memory Search** (`/graphql`) – Query memory semantically via Strawberry GraphQL.
 
 ---
 
-## Project Structure
+## 🌐 About Qloo API Integration
 
-```
-genkubeguard/
-├── src/
-│   ├── llm_handler.py         # Handles explain, patch, and suggest logic using Ollama
-│   ├── rag_memory.py          # In-memory RAG using FAISS
-│   ├── yaml_patcher.py        # Delegates patch generation
-│   ├── prompts/               # Prompt templates for explain, fix, suggest, and personas
-│   └── schema.py              # GraphQL schema definition
-│
-├── tests/
-│   ├── test_api_endpoints.py  # Tests for /analyze, /patch, /suggest, /suggest-persona, /memory
-│   ├── test_llm_handler.py    # Unit tests for LLM logic
-│   └── test_yaml_patcher.py   # Test for patching logic
-│
-├── k8s/                       # Sample Kubernetes YAML files
-├── main.py                   # FastAPI application entry point
-├── requirements.txt
-├── Dockerfile
-├── docker-compose.yml
-├── .gitignore
-└── README.md
+We initially obtained a Qloo API key, but due to technical issues during the submission window, the `/recommend` endpoint uses a **mock implementation**. All logic and persona flavoring follow Qloo’s expected structure.
+
+---
+
+## 🧠 Memory & GraphQL Notes
+
+- For short DevSecOps facts (e.g., `"Privileged containers are risky"`), the system uses a **fast fallback** parser.
+- For deeper issues (e.g., unset `memoryLimits`, missing `probes`), it uses **full RAG + LLM** flow.
+- All entries are searchable via `/memory/search` or `/graphql`.
+
+This hybrid design optimizes both speed and cost while preserving intelligence.
+
+---
+
+## 🛠️ Technologies Used
+
+- **FastAPI** – Python backend
+- **Ollama + Mistral 7B** – LLM inference
+- **FAISS** – Local memory vector store
+- **Strawberry GraphQL** – Memory querying
+- **kube-linter** – Static YAML issue detection
+- **Docker + Docker Compose** – Deployment
+
+---
+
+## 🧪 How to Run Locally
+
+```bash
+git clone https://github.com/Site24x7Project/genkube-guard.git
+cd genkube-guard
+docker-compose up --build
 ```
 
+Visit:
 
-## How to Run the Application
-
-### Prerequisites
-
-* Python 3.10+ or Docker
-* Ollama with `mistral` model installed
-
-### Install Mistral
-
-ollama run mistral
-
-### Set Environment Variables (Windows PowerShell)
-
-[Environment]::SetEnvironmentVariable("OLLAMA_HOST", "localhost", "User")
-[Environment]::SetEnvironmentVariable("OLLAMA_PORT", "11434", "User")
-
-### Run with Docker Compose
-
-docker-compose up
-
-Access after startup:
-
-* FastAPI Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)
-* GraphQL Playground: [http://localhost:8000/graphql](http://localhost:8000/graphql)
-
-### Run Manually (Without Docker)
-
-pip install -r requirements.txt
-uvicorn main:app --reload
+- Swagger: [http://localhost:8000/docs](http://localhost:8000/docs)
+- GraphQL: [http://localhost:8000/graphql](http://localhost:8000/graphql)
 
 ---
 
-## Endpoints
+## 📂 API Endpoints
 
-### REST
-
-POST /analyze – Uploads a YAML file, returns linter issues and LLM explanations.
-POST /patch – Uploads a YAML file and returns a patched version.
-POST /suggest – Uploads a YAML file and returns best-practice suggestions.
-POST /suggest-persona?persona= – Returns suggestions based on developer role (junior, senior, sre).
-GET /memory?q=search_term – Searches stored prompt-response memory.
-
-### GraphQL
-
-Visit: [http://localhost:8000/graphql](http://localhost:8000/graphql)
-
-Queries:
-analyze(yamlStr: String!): AnalysisResult
-patch(yamlStr: String!): PatchResult
-suggest(yamlStr: String!): SuggestionResult
-suggestWithPersona(yamlStr: String!, persona: String!): SuggestionResult
+| Endpoint                | Description                                              |
+|------------------------|----------------------------------------------------------|
+| `POST /analyze`         | Analyze YAML & explain issues via LLM                   |
+| `POST /patch`           | Patch Deployment/StatefulSet with missing security best practices |
+| `POST /suggest`         | Suggest generic DevSecOps improvements by kind         |
+| `POST /suggest-persona` | Persona-based (junior/senior/SRE) YAML suggestions      |
+| `POST /recommend`       | Recommend cultural-aware practices (mock Qloo)          |
+| `POST /memory`          | Save prompt-response memory                             |
+| `POST /memory/clear`    | Clear memory index                                      |
+| `POST /graphql`         | Search memory semantically or by keyword                |
 
 ---
 
-## Testing
+## 📄 Test YAMLs
 
-### Run all tests
+All example YAMLs used for testing are included in the `k8s/` folder:
 
-python -m pytest
-
-### Detailed report
-
-pytest -v
-
-### Test coverage
-
-pip install pytest-cov
-pytest --cov=src --cov-report=term-missing
-
-### Tests include:
-
-* All REST endpoints
-* Patch logic
-* LLM outputs
-* Memory retrieval
+- `sample_deployment.yaml`
+- `secure_deployment.yaml`
+- `statefulset.yaml`
+- `broken_yaml.yaml`
+- `multi_resource_mixed.yaml`
+- `service_and_configmap.yaml`
 
 ---
 
-## Technical Stack
+## ❌ No Frontend UI
 
-* Python 3.10
-* FastAPI
-* Strawberry GraphQL
-* Ollama (with Mistral model)
-* FAISS (for vector search)
-* Kube-linter (static analysis)
-* Docker & Docker Compose
-* Pytest
+This project is **backend-only by design** to focus on LLM reasoning and DevSecOps logic.  
+All endpoints are available via REST or GraphQL, with no separate user interface.
 
 ---
 
-## Why This Project Matters
+## 🎥 Demo Video
 
-This project shows how to combine DevSecOps tooling with generative AI to automate YAML validation, generate role-specific guidance, and streamline secure Kubernetes deployment workflows. It is designed to be practical, testable, and immediately deployable  ideal for backend and GenAI developer roles.
-
----
-
-## Author
-
-**Aswathi Vipin**
-[LinkedIn](https://www.linkedin.com/in/aswathivk)
+🔗 [Demo – YouTube](https://youtube.com/shorts/1Z7KkgxuFQc?si=ukPMZ94mImA_IQMH)
 
 ---
 
-## License
+## 🔍 Submission Details
 
-MIT License
-See the [LICENSE](LICENSE) file for details.
+- **GitHub**: [GenKube Guard Repository](https://github.com/Site24x7Project/genkube-guard)
+- **Hackathon**: Qloo LLM Hackathon 2025
+- **Built by**: Aswathi VK
+- **Focus**: Cultural + DevSecOps synergy for secure YAMLs
+- **Deployment**: Docker on local + portable cloud-ready stack
+
+---
+
+## 📜 License & Attribution
+
+- MIT License
+- kube-linter (via open source)
+- Qloo mock fallback used
+- Ollama with Mistral 7B for all LLM prompts
+
+---
+
+## 🙏 Acknowledgements
+
+Thank you to the Qloo team and judges. Grateful to the OSS community building the future of LLMs and DevSecOps.
+
+---
+
+Made with ❤️ by **Aswathi VK**

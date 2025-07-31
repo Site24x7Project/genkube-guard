@@ -6,5 +6,9 @@ strawberry-graphql
 ollama
 python-multipart
 pyyaml
-
+requests
+pyyaml
+sentence-transformers
+slowapi==0.1.5
+protobuf
 
