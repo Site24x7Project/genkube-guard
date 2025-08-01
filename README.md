@@ -1,3 +1,13 @@
+---
+title: Genkube Guard
+emoji: 📈
+colorFrom: gray
+colorTo: blue
+sdk: docker
+pinned: false
+license: mit
+short_description: A DevSecOps AI Assistant that analyzes, patches, and explain
+---
 # GenKube Guard
 
 > A DevSecOps LLM-powered Assistant for Secure Kubernetes YAMLs
@@ -101,6 +111,22 @@ All endpoints are available via REST or GraphQL, with no separate user interface
 
 ---
 
+## ⚠️ Hugging Face Deployment Notice
+
+Due to Hugging Face’s limitations on running local LLMs like Ollama/Mistral, the live deployment returns fallback messages for:
+
+- `/suggest`
+- `/patch`
+- `/suggest-persona`
+- `/recommend`
+
+✅ These endpoints work **perfectly in the demo video** and local Docker build with LLM support.
+
+Please refer to the [YouTube demo](https://youtube.com/shorts/1Z7KkgxuFQc?si=ukPMZ94mImA_IQMH) for full functionality.
+
+---
+
+
 ## 🔍 Submission Details
 
 - **GitHub**: [GenKube Guard Repository](https://github.com/Site24x7Project/genkube-guard)
@@ -127,3 +153,4 @@ Thank you to the Qloo team and judges. Grateful to the OSS community building th
 ---
 
 Made with ❤️ by **Aswathi VK**
+
