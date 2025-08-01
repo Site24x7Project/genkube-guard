@@ -30,4 +30,4 @@ docker-compose.override.yml
 # VS Code
 .vscode/
 
-memory-data/
+
