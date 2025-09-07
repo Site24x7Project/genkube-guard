@@ -11,4 +11,4 @@ pyyaml
 sentence-transformers
 slowapi==0.1.5
 protobuf
-
+pytest
