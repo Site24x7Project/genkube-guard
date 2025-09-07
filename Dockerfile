@@ -1,34 +1,32 @@
-# ✅ 1. Use a slim Python base
-FROM python:3.10-slim
+﻿FROM python:3.10-slim
 
-# ✅ 2. Create a non-root user (required by Hugging Face)
-RUN useradd -m -u 1000 user
-USER user
-ENV PATH="/home/user/.local/bin:$PATH"
+# Ensure apt runs as root in the build stage
+USER root
 
-# ✅ 3. Install system dependencies (including curl)
+# System deps (no recommends to keep image small)
 RUN apt-get update && \
-    apt-get install -y build-essential curl && \
+    apt-get install -y --no-install-recommends curl ca-certificates tar && \
     rm -rf /var/lib/apt/lists/*
 
-# ✅ 4. Install kube-linter CLI
-RUN curl -L https://github.com/stackrox/kube-linter/releases/download/v0.6.6/kube-linter-linux.tar.gz \
-  | tar -xz && chmod +x kube-linter && mv kube-linter /usr/local/bin/kube-linter
+# Install kube-linter (Linux binary)
+RUN curl -fsSL https://github.com/stackrox/kube-linter/releases/download/v0.6.6/kube-linter-linux.tar.gz \
+  | tar -xz && mv kube-linter /usr/local/bin/kube-linter
 
-# ✅ 5. Set working directory
+# Non-root runtime user
+RUN useradd -m -u 1000 user
+
+# App
 WORKDIR /app
+COPY --chown=user:user . .
 
-# ✅ 6. Copy requirements and install them
-COPY --chown=user requirements.txt .
+# Python deps
 RUN pip install --no-cache-dir -r requirements.txt
 
-# ✅ 7. Copy all source code into the image
-COPY --chown=user . .
+ENV PYTHONPATH=/app
 
-# ✅ 8. Set environment variables and expose port 7860
-ENV LOG_LEVEL=info
-ENV OLLAMA_HOST=http://host.docker.internal:11434
+# Drop privileges
+USER user
+
+# HF expects 7860; Cloud Run will override with PORT
 EXPOSE 7860
-
-# ✅ 9. Launch app using correct port for Hugging Face
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860", "--log-level", "info"]
+CMD ["python","-c","import os,uvicorn; uvicorn.run('main:app', host='0.0.0.0', port=int(os.getenv('PORT','7860')))"]
