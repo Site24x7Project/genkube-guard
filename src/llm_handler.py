@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 memory = RagMemory()
 memory.load("memory-data/memory.pkl")
 executor = ThreadPoolExecutor(max_workers=4)
-#LLM_TIMEOUT_SECONDS = 60
+LLM_TIMEOUT_SECONDS = 45
 
 
 def is_valid_response(text: str) -> bool:
@@ -54,28 +54,38 @@ def _messages_to_text(messages):
     except Exception:
         return str(messages)
 
-def _call_hf_inference(model_hint, messages, timeout=30):
+def _call_hf_inference(model_hint, messages, timeout=LLM_TIMEOUT_SECONDS):
     """Call Hugging Face Inference API using env vars LLM_MODEL / LLM_API_KEY."""
-    api_key = os.getenv("LLM_API_KEY", "")
-    model_id = os.getenv("LLM_MODEL", model_hint or "mistralai/Mistral-7B-Instruct-v0.2")
+    api_key = (os.getenv("LLM_API_KEY", "")).strip()
+    model_id = (os.getenv("LLM_MODEL", model_hint or "mistralai/Mistral-7B-Instruct-v0.2")).strip()
     if not api_key:
         raise RuntimeError("HF provider selected but LLM_API_KEY is missing")
 
-    headers = {"Authorization": f"Bearer {api_key}"}
-    url = f"https://api-inference.huggingface.co/models/{model_id}"
-    payload = {"inputs": _messages_to_text(messages), "parameters": {"max_new_tokens": 512}}
+    # Build correct endpoint and show exactly what we're calling
+    url = f"https://api-inference.huggingface.co/models/{model_id}?wait_for_model=true"
+    logger.info(f"HF provider active, model={repr(model_id)} url={url}")
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Accept": "application/json",
+    }
+    payload = {
+        "inputs": _messages_to_text(messages),
+        "parameters": {"max_new_tokens": 512, "return_full_text": False},
+    }
 
     r = requests.post(url, headers=headers, json=payload, timeout=timeout)
     if not r.ok:
         raise RuntimeError(f"HF error {r.status_code}: {r.text[:200]}")
-    data = r.json()
 
+    data = r.json()
     # Common HF shapes
-    if isinstance(data, list) and data and isinstance(data[0], dict) and "generated_text" in data[0]:
-        return data[0]["generated_text"]
-    if isinstance(data, dict) and "generated_text" in data:
-        return data["generated_text"]
+    if isinstance(data, list) and data and isinstance(data[0], dict):
+        return (data[0].get("generated_text") or data[0].get("text") or "").strip()
+    if isinstance(data, dict):
+        return (data.get("generated_text") or data.get("text") or "").strip()
     return str(data)
+
 
 
 
