@@ -6,6 +6,8 @@ from pathlib import Path
 from src.rag_memory import RagMemory
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as LLMTimeout
 import re
+import requests
+
 
 logger = logging.getLogger(__name__)
 
@@ -45,15 +47,52 @@ def is_valid_yaml_response(text: str) -> bool:
         return bool(parsed)
     except Exception:
         return False
+def _messages_to_text(messages):
+    """Flatten chat-style messages to a single prompt string for HF Inference."""
+    try:
+        return "\n\n".join(f"{m.get('role','user')}: {m.get('content','')}" for m in messages)
+    except Exception:
+        return str(messages)
+
+def _call_hf_inference(model_hint, messages, timeout=30):
+    """Call Hugging Face Inference API using env vars LLM_MODEL / LLM_API_KEY."""
+    api_key = os.getenv("LLM_API_KEY", "")
+    model_id = os.getenv("LLM_MODEL", model_hint or "mistralai/Mistral-7B-Instruct-v0.2")
+    if not api_key:
+        raise RuntimeError("HF provider selected but LLM_API_KEY is missing")
+
+    headers = {"Authorization": f"Bearer {api_key}"}
+    url = f"https://api-inference.huggingface.co/models/{model_id}"
+    payload = {"inputs": _messages_to_text(messages), "parameters": {"max_new_tokens": 512}}
+
+    r = requests.post(url, headers=headers, json=payload, timeout=timeout)
+    if not r.ok:
+        raise RuntimeError(f"HF error {r.status_code}: {r.text[:200]}")
+    data = r.json()
+
+    # Common HF shapes
+    if isinstance(data, list) and data and isinstance(data[0], dict) and "generated_text" in data[0]:
+        return data[0]["generated_text"]
+    if isinstance(data, dict) and "generated_text" in data:
+        return data["generated_text"]
+    return str(data)
+
 
 
 
 def run_llm_with_timeout(model, messages):
+    provider = os.getenv("LLM_PROVIDER", "ollama").strip().lower()
     try:
-        response = ollama.chat(model=model, messages=messages)
+        if provider == "hf":
+            # Use Hugging Face Inference API with the env you set in the Space
+            return _call_hf_inference(model, messages, timeout=30)
 
+        # Default: existing Ollama behavior (local dev)
+        response = ollama.chat(model=model, messages=messages)
         return response["message"]["content"]
+
     except LLMTimeout:
+        # Keeping your original handler untouched
         logger.warning("LLM timed out after %s seconds", LLM_TIMEOUT_SECONDS)
         return "LLM error: Timed out."
     except Exception as e:
