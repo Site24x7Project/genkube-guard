@@ -1,156 +1,167 @@
----
-title: Genkube Guard
-emoji: 📈
-colorFrom: gray
-colorTo: blue
-sdk: docker
-pinned: false
-license: mit
-short_description: A DevSecOps AI Assistant that analyzes, patches, and explain
----
 # GenKube Guard
 
-> A DevSecOps LLM-powered Assistant for Secure Kubernetes YAMLs
-
-GenKube Guard is a FastAPI-based backend that combines Large Language Model reasoning with Qloo’s Taste AI to offer culturally-aware and technically sound recommendations for Kubernetes YAML hardening. It automatically analyzes YAML files, suggests security enhancements, and provides patching logic for insecure workloads.
+GenKube Guard is an AI-powered Kubernetes YAML security assistant designed to help teams analyze, patch, and improve Kubernetes manifests with intelligent suggestions. It combines **GenAI capabilities** like LLM-driven recommendations and semantic memory (RAG) with strong backend engineering practices.
 
 ---
 
-## 🚀 Features
+## 📊 Features
 
-- **LLM-Powered YAML Analysis** (`/analyze`) – Uses `kube-linter` to detect issues and explains them via LLM.
-- **Secure Patch Generator** (`/patch`) – Automatically patches Deployments and StatefulSets with missing security fields.
-- **DevSecOps Suggestions** (`/suggest`) – General best practices by resource kind.
-- **Persona-Specific Guidance** (`/suggest-persona`) – Tailored YAML advice for juniors, seniors, and SREs.
-- **Taste-Aware Recommendations** (`/recommend`) – Culturally flavored DevSecOps insights via Qloo mock API.
-- **RAG Memory System** (`/memory`) – Stores and retrieves DevSecOps context across sessions.
-- **GraphQL Memory Search** (`/graphql`) – Query memory semantically via Strawberry GraphQL.
-
----
-
-## 🌐 About Qloo API Integration
-
-We initially obtained a Qloo API key, but due to technical issues during the submission window, the `/recommend` endpoint uses a **mock implementation**. All logic and persona flavoring follow Qloo’s expected structure.
+* **Analyze** Kubernetes YAML for issues with `/analyze` (integrates `kube-linter`).
+* **Auto-Patch** YAML for security and performance best practices via `/patch`.
+* **Suggest** improvements using `/suggest` or persona-based `/suggest-persona`.
+* **Mock Recommendations** via `/recommend` endpoint (Qloo API is mocked for demo purposes).
+* **Memory Search** to recall past prompts and responses with `/memory` and `/graphql`.
+* **REST + GraphQL APIs** to integrate into diverse tooling.
+* **Rate limiting** built-in via SlowAPI for controlled usage.
 
 ---
 
-## 🧠 Memory & GraphQL Notes
+## 🔧 Architecture Highlights
 
-- For short DevSecOps facts (e.g., `"Privileged containers are risky"`), the system uses a **fast fallback** parser.
-- For deeper issues (e.g., unset `memoryLimits`, missing `probes`), it uses **full RAG + LLM** flow.
-- All entries are searchable via `/memory/search` or `/graphql`.
+GenKube Guard isn't just a YAML analyzer — it’s a **full GenAI backend** built for real-world scale in 2025:
 
-This hybrid design optimizes both speed and cost while preserving intelligence.
+* **Dual Memory System** – Combines a fast FAISS store for `/memory` with a semantic RAG engine (`memory.pkl`) for deep LLM context recall.
+* **Secure Auto-Patching** – `/patch` enforces DevSecOps best practices (runAsNonRoot, resource limits, probes) directly in Kubernetes YAML.
+* **GraphQL + REST APIs** – Memory can be queried via REST **or** GraphQL using Strawberry.
+* **Security-First Containers** – Non-root Docker builds and integrated `kube-linter` binary for runtime linting.
+* **Persona-Aware Prompting** – 10 carefully engineered prompt templates for juniors, seniors, and SREs, mixing cultural and technical context.
+* **Production-like Testing** – Includes comprehensive test suite with multiple sample YAMLs for broken, mixed, and secure deployments.
 
----
-
-## 🛠️ Technologies Used
-
-- **FastAPI** – Python backend
-- **Ollama + Mistral 7B** – LLM inference
-- **FAISS** – Local memory vector store
-- **Strawberry GraphQL** – Memory querying
-- **kube-linter** – Static YAML issue detection
-- **Docker + Docker Compose** – Deployment
+**Why it matters in 2025:**
+Companies like **Twilio** and **Glean** increasingly demand **GenAI-powered developer tools** that go beyond simple chatbots. This project demonstrates how **retrieval-augmented generation (RAG)**, persona-driven LLMs, and backend engineering can come together to solve real DevSecOps challenges.
 
 ---
 
-## 🧪 How to Run Locally
+## 🔒 Example Auto-Patch
 
-```bash
-git clone https://github.com/Site24x7Project/genkube-guard.git
-cd genkube-guard
-docker-compose up --build
+**Input YAML:**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+spec:
+  template:
+    spec:
+      containers:
+      - name: app
+        image: nginx:latest
 ```
 
-Visit:
+**Output YAML:**
 
-- Swagger: [http://localhost:8000/docs](http://localhost:8000/docs)
-- GraphQL: [http://localhost:8000/graphql](http://localhost:8000/graphql)
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+spec:
+  template:
+    spec:
+      containers:
+      - name: app
+        image: nginx:1.21.1
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          readOnlyRootFilesystem: true
+        resources:
+          requests:
+            cpu: "125m"
+            memory: "256Mi"
+          limits:
+            cpu: "250m"
+            memory: "512Mi"
+```
 
----
-
-## 📂 API Endpoints
-
-| Endpoint                | Description                                              |
-|------------------------|----------------------------------------------------------|
-| `POST /analyze`         | Analyze YAML & explain issues via LLM                   |
-| `POST /patch`           | Patch Deployment/StatefulSet with missing security best practices |
-| `POST /suggest`         | Suggest generic DevSecOps improvements by kind         |
-| `POST /suggest-persona` | Persona-based (junior/senior/SRE) YAML suggestions      |
-| `POST /recommend`       | Recommend cultural-aware practices (mock Qloo)          |
-| `POST /memory`          | Save prompt-response memory                             |
-| `POST /memory/clear`    | Clear memory index                                      |
-| `POST /graphql`         | Search memory semantically or by keyword                |
-
----
-
-## 📄 Test YAMLs
-
-All example YAMLs used for testing are included in the `k8s/` folder:
-
-- `sample_deployment.yaml`
-- `secure_deployment.yaml`
-- `statefulset.yaml`
-- `broken_yaml.yaml`
-- `multi_resource_mixed.yaml`
-- `service_and_configmap.yaml`
+This demonstrates GenKube Guard's ability to enforce strong security practices automatically.
 
 ---
 
-## ❌ No Frontend UI
+## 📹 Demo Video
 
-This project is **backend-only by design** to focus on LLM reasoning and DevSecOps logic.  
-All endpoints are available via REST or GraphQL, with no separate user interface.
-
----
-
-## 🎥 Demo Video
-
-🔗 [Demo – YouTube](https://youtube.com/shorts/1Z7KkgxuFQc?si=ukPMZ94mImA_IQMH)
+Watch the project in action: [YouTube Demo](https://www.youtube.com/watch?v=YOUR_VIDEO_LINK)
 
 ---
 
-## ⚠️ Hugging Face Deployment Notice
+## 🛠️ Local Setup
 
-Due to Hugging Face’s limitations on running local LLMs like Ollama/Mistral, the live deployment returns fallback messages for:
+```bash
+# Clone repository
+git clone https://github.com/yourusername/genkube-guard.git
+cd genkube-guard
 
-- `/suggest`
-- `/patch`
-- `/suggest-persona`
-- `/recommend`
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate   # Windows
 
-✅ These endpoints work **perfectly in the demo video** and local Docker build with LLM support.
+# Install dependencies
+pip install -r requirements.txt
 
-Please refer to the [YouTube demo](https://youtube.com/shorts/1Z7KkgxuFQc?si=ukPMZ94mImA_IQMH) for full functionality.
+# Run locally
+uvicorn main:app --reload
+```
 
----
+### Docker Run
 
+```bash
+# Build Docker image
+docker build -t genkube-guard .
 
-## 🔍 Submission Details
+# Run container
+docker run -p 7860:7860 genkube-guard
+```
 
-- **GitHub**: [GenKube Guard Repository](https://github.com/Site24x7Project/genkube-guard)
-- **Hackathon**: Qloo LLM Hackathon 2025
-- **Built by**: Aswathi VK
-- **Focus**: Cultural + DevSecOps synergy for secure YAMLs
-- **Deployment**: Docker on local + portable cloud-ready stack
-
----
-
-## 📜 License & Attribution
-
-- MIT License
-- kube-linter (via open source)
-- Qloo mock fallback used
-- Ollama with Mistral 7B for all LLM prompts
+> **Note:** Default port for Hugging Face is `7860`.
 
 ---
 
-## 🙏 Acknowledgements
+## 🛠️ Endpoints
 
-Thank you to the Qloo team and judges. Grateful to the OSS community building the future of LLMs and DevSecOps.
+| Endpoint           | Method | Description                           |
+| ------------------ | ------ | ------------------------------------- |
+| `/analyze`         | POST   | Analyze uploaded YAML for lint issues |
+| `/patch`           | POST   | Auto-secure Kubernetes YAML           |
+| `/suggest`         | POST   | Suggest improvements                  |
+| `/suggest-persona` | POST   | Persona-driven suggestions            |
+| `/recommend`       | GET    | Mock recommendation data              |
+| `/memory`          | GET    | View simple FAISS memory              |
+| `/graphql`         | POST   | Query memory with GraphQL             |
 
 ---
 
-Made with ❤️ by **Aswathi VK**
+## 💡 Why This Matters
 
+In 2025, developer tooling is shifting towards **intelligent, context-aware assistants**. GenKube Guard showcases how **GenAI and traditional engineering** can combine to:
+
+* Improve cloud-native security.
+* Automate repetitive DevOps work.
+* Provide explainable, persona-based insights for diverse teams.
+* Serve as a blueprint for scalable GenAI backends with RAG.
+
+This isn't just a student project — it's a **production-grade demonstration** of what next-gen developer assistants will look like.
+
+---
+
+## 📊 Kubernetes Sample YAMLs for Testing
+
+* `broken_yaml.yaml` – malformed YAML
+* `multi_resource_mixed.yaml` – multiple resource types
+* `sample_deployment.yaml` – minimal valid deployment
+* `secure_deployment.yaml` – already hardened deployment
+* `service_and_configmap.yaml` – service and configmap example
+* `statefulset.yaml` – statefulset example
+
+These files are used in automated tests to validate GenKube Guard's capabilities.
+
+---
+
+## 📄 License
+
+MIT License
+
+---
+
+> Built with 💖 for modern DevSecOps teams.
