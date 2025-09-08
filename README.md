@@ -1,6 +1,13 @@
-# GenKube Guard
+﻿# GenKube Guard
 
 GenKube Guard is an AI-powered Kubernetes YAML security assistant designed to help teams analyze, patch, and improve Kubernetes manifests with intelligent suggestions. It combines **GenAI capabilities** like LLM-driven recommendations and semantic memory (RAG) with strong backend engineering practices.
+
+## 🚀 Live Demo
+
+Deployed on Hugging Face Spaces.
+
+**API Docs:** [https://ashcodespacev4-genkube-guard.hf.space/docs#](https://ashcodespacev4-genkube-guard.hf.space/docs#)
+**Direct Recommend endpoint:** [https://ashcodespacev4-genkube-guard.hf.space/docs#/default/get\_recommendation\_recommend\_get](https://ashcodespacev4-genkube-guard.hf.space/docs#/default/get_recommendation_recommend_get)
 
 ---
 
